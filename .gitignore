@@ -1,0 +1,8 @@
+.ipynb_checkpoints/
+.vscode/
+notebooks/lib/__pycache__
+notebooks/cache
+
+# data
+Data/
+# /papers/notes.md

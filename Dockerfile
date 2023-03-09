@@ -12,12 +12,13 @@ RUN pip install jupyter
 RUN pip install numpy pandas scikit-learn 
 # Install NLP Python packages
 RUN pip install gensim nltk pyemd sacrebleu unbabel-comet git+https://github.com/google-research/bleurt.git \
-                evaluate datasets transformers happytransformer sentence_transformers torchmetrics
+                evaluate datasets transformers happytransformer sentence_transformers torchmetrics nlg-metricverse
+# Download nltk stopwords
+RUN python -m nltk.downloader stopwords
 # Instal Neural Networks Python packages
 RUN pip install tensorflow==2.11 keras torch
 # Instal Visualization Python packages
-RUN pip install matplotlib==3.5.3 rise==5.7.1 \
-                tqdm==4.64.1
+RUN pip install matplotlib==3.5.3 rise==5.7.1 seaborn wordcloud
 # Instal other tools Python packages
 RUN pip install tqdm
 

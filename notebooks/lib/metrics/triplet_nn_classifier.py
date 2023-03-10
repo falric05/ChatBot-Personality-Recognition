@@ -156,8 +156,7 @@ class BarneyBotTripletClassifier:
             samples = samples[sampled_indices]
         # Construct all triples from the selected sentences
         inputs = np.array([
-            np.concatenate(triplet)
-            for triplet in itertools.permutations(samples, 3)
+            np.concatenate(triplet) for triplet in itertools.permutations(samples, 3)
         ])
         # inputs = np.concatenate(samples)
         # Get semantic classifier probability for each triple, and return all of them

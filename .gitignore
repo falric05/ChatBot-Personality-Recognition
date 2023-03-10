@@ -5,6 +5,7 @@ notebooks/lib/__pycache__
 notebooks/cache
 __pycache__
 notebooks/lib/disitlbert_embedder
+desktop.ini
 
 # data
 Data/

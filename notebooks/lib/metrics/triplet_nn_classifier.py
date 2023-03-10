@@ -15,7 +15,8 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 # Class defining the semantic classifier
 class BarneyBotTripletClassifier:
     # Initialization
-    def __init__(self):
+    def __init__(self, character=None, load_path=None):
+        assert character and load_path
         # Training params for the classifier
         self.batch_size = 16
         self.lr = 1e-6
@@ -26,9 +27,14 @@ class BarneyBotTripletClassifier:
         self.train_size = 0.85
         self.test_size = 0.10
         # Instance state, for caching, in case of repeated usage of this metric
-        self.sentence_transformer = None
-        self.character = None
-        self.classifier_model = None
+        if not load_path and not character:
+            self.classifier_model = keras.models.load_model(load_path)
+            self.character = character
+            self.sentence_transformer = SentenceTransformer("sentence-transformers/paraphrase-multilingual-mpnet-base-v2")
+        else:
+            self.sentence_transformer = None
+            self.character = None
+            self.classifier_model = None
 
     # Function to flush instance state cache
     def reset_state(self):
@@ -105,13 +111,13 @@ class BarneyBotTripletClassifier:
             # Iterate over lines
             for i in tqdm(range(2, len(series_df_1))):
                 # Get a triple of consecutive lines for the character, and concatenate them in one sample
-                lines = list(series_df_1['encoded_line'][i - 2:i + 1])
-                lines = np.concatenate(lines)
+                lines = list(series_df_1['line'][i - 2:i + 1])
+                # lines = np.concatenate(lines)
                 df_rows['character'].append(1)
                 df_rows['encoded_lines'].append(lines)
                 # Do the same for non-character lines
-                lines = list(series_df_0['encoded_line'][i - 2:i + 1])
-                lines = np.concatenate(lines)
+                lines = list(series_df_0['line'][i - 2:i + 1])
+                # lines = np.concatenate(lines)
                 df_rows['character'].append(0)
                 df_rows['encoded_lines'].append(lines)
         # Create a new dataframe from the rows we have built
@@ -153,6 +159,7 @@ class BarneyBotTripletClassifier:
             np.concatenate(triplet)
             for triplet in itertools.permutations(samples, 3)
         ])
+        # inputs = np.concatenate(samples)
         # Get semantic classifier probability for each triple, and return all of them
         outputs = self.classifier_model(inputs)
         return outputs

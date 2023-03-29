@@ -39,20 +39,22 @@ class BarneyEmbedder:
         """
         initialize DistilBert Embedder
 
-        embedding_size (int): dimensionality of the embedder output
-        embedder_path (str): the path used to upload the embedder, if default (None) the embedder il built from zero with a default structure
-        from_pretrained (bool): if true the embedder is built starting from embedder_path (must be not None), otherwise the embedder is initialized randomly, default is False 
-        use_cuda (bool): if True the training tensors are transfered to the GPU, default is False
+        * `embedding_size` (int): dimensionality of the embedder output
+        * `embedder_path` (str): the path used to upload the embedder, if default (None) the embedder il built from zero with a default structure
+        * `from_pretrained` (bool): if true the embedder is built starting from embedder_path (must be not None), otherwise the embedder is initialized randomly, default is False 
+        * `use_cuda` (bool): if True the training tensors are transfered to the GPU, default is False
         """
 
         ### set model params
         self.embedding_size: int = embedding_size
 
         ### set some training params
-        self.batch_size: int = 64
+#         self.batch_size: int = 64
+        self.batch_size: int = 8
         self.lr: float = 1e-3
         self.epochs: int = 5
-        self.training_steps: int = 50
+#         self.training_steps: int = 50
+        self.training_steps: int = 12
         self.margin: int = self.embedding_size * 10
 
         ### create the model
@@ -74,15 +76,18 @@ class BarneyEmbedder:
         """
         create the embedder model
 
-        embedder_path (str): the path used to upload the embedder, if default (None) the embedder il built from zero with a default structure
-        from_pretrained (bool): if true the embedder is built starting from embedder_path (must be not None), otherwise the embedder is initialized randomly, default is False 
+        * `embedder_path` (str): the path used to upload the embedder, if default (None) the embedder il built from zero with a default structure
+        * `from_pretrained` (bool): if true the embedder is built starting from embedder_path (must be not None), otherwise the embedder is initialized randomly, default is False 
 
         returns the embedder model
         """
 
         if not from_pretrained:
-            ### build embedder from "scratch"
+            ### build embedder from "scratch" 
+            # old model distilbert-base-nli-mean-tokens
+            # new model MiniLM-L6-H384-uncased
             model = SentenceTransformer('distilbert-base-nli-mean-tokens')
+            # model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
             model.train()
             dense = models.Dense(
                 in_features=model.get_sentence_embedding_dimension(),
@@ -111,11 +116,11 @@ class BarneyEmbedder:
         """
         filters the dataset for the triplet loss training, splitting it into easy_positives, semi_hard_negatives and hard_negatives
 
-        examples (List[InputExample]): the dataset to filter
-        model (SentenceTransformer): model used to have a first estimation of the embeddings
-        margin (float): margin parameter of the triple loss
-        verbose (bool): verbose parameter, default is False
-        parallel (bool): parallel the mining work, highly discouraged if working with cuda, default is False
+        * `examples` (List[InputExample]): the dataset to filter
+        * `model` (SentenceTransformer): model used to have a first estimation of the embeddings
+        * `margin` (float): margin parameter of the triple loss
+        * `verbose` (bool): verbose parameter, default is False
+        * `parallel` (bool): parallel the mining work, highly discouraged if working with cuda, default is False
 
         returns the semi_hard_negatives dataset, the dataset_length, the number of hard negatives and the number of easy positives
         """
@@ -228,12 +233,12 @@ class BarneyEmbedder:
         train the DistilBert embedder with TripleLoss
         and saves train and validation history (accuracy values over the epochs)
 
-        patience (int): patience parameter for early stopping
-        train_examples (List[InputExamples]): train dataset
-        val_examples (List[InputExamples]): validation dataset
-        save_path (str): path where to save the trained embedder
-        verbose (bool): verbose parameter, default is False
-        statistics_path (str): path where to save accuracy history and other training statistics, default is None
+        * `patience` (int): patience parameter for early stopping
+        * `train_examples` (List[InputExamples]): train dataset
+        * `val_examples` (List[InputExamples]): validation dataset
+        * `save_path` (str): path where to save the trained embedder
+        * `verbose` (bool): verbose parameter, default is False
+        * `statistics_path` (str): path where to save accuracy history and other training statistics, default is None
 
         returns the train and validation history (of the accuracy metric)
         """

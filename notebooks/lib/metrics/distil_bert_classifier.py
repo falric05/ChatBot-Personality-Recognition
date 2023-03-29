@@ -31,13 +31,14 @@ class DistilBertClassifier:
                  embedder_path: str = None,
                  from_pretrained: bool = False,
                  embedding_size: int = 32,
-                 use_cuda: bool = False) -> None:
+                 use_cuda: bool = False,
+                 n_triplets_x_anchor: int = 10) -> None:
         """
         initialize DistilBert classifier:
-        embedder_path (str): the path used to upload the embedder, if default value is given (None) the embedder il built from zero with a default structure 
-        from_pretrained (bool): if true the embedder is built starting from embedder_path (must be not None), otherwise the embedder is initialized randomly, default is False
-        embedding_size (int): dimensionality of the embedder output, default is 32
-        use_cuda (bool): if True the training tensors are transfered to the GPU, default is False
+        * `embedder_path` (str): the path used to upload the embedder, if default value is given (None) the embedder il built from zero with a default structure 
+        * `from_pretrained` (bool): if true the embedder is built starting from embedder_path (must be not None), otherwise the embedder is initialized randomly, default is False
+        * `embedding_size` (int): dimensionality of the embedder output, default is 32
+        * `use_cuda` (bool): if True the training tensors are transfered to the GPU, default is False
         """
 
         ### save the characters for training purposes
@@ -48,7 +49,7 @@ class DistilBertClassifier:
         self.val_size = 0.05
 
         ### given a single anchor, define the number of triplets to build for the triplet loss
-        self.n_triplets_x_anchor: int = 10
+        self.n_triplets_x_anchor = n_triplets_x_anchor
 
         ### initialize the ambedder
         self.embedder = BarneyEmbedder(embedding_size=embedding_size,
@@ -83,12 +84,12 @@ class DistilBertClassifier:
         returns the dataframe of character / lines used for training and testing, shiffled
         the column 'character' indicates the character name,
         the column 'line' indicates a sentence uttered by the character in the dataset scripts
-        for each character collects randomly a number of 'n_sentences' sentences from 'series_df'
+        for each character collects randomly a number of 'n_sentences' sentences from `series_df`
         this will be the set of sentences used as input for the embedder
 
-        series_df (pandas.DataFrame): the reference dataframe, must have a 'character' and a 'line' column
-        n_shuffles (int): multiplication factor for the output dataset dimensionality, if n_shuffles > 1, the output dataset will be n_shuffles times larger 
-        n_sentences (int): cardinality of the set of sentences that will be used as input for the embedder
+        * `series_df` (pandas.DataFrame): the reference dataframe, must have a 'character' and a 'line' column
+        * `n_shuffles` (int): multiplication factor for the output dataset dimensionality, if n_shuffles > 1, the output dataset will be n_shuffles times larger 
+        * `n_sentences` (int): cardinality of the set of sentences that will be used as input for the embedder
         """
         n_sentences = n_sentences // 2
         # Separate lines by character from all the others
@@ -125,16 +126,16 @@ class DistilBertClassifier:
             verbose: bool = False) -> Tuple[List[DataFrame], List[DataFrame]]:
 
         """
-        create and save dataset starting from the csv at 'source_encoded_path'
+        create and save dataset starting from the csv at `source_encoded_path`
         this dataset will be used for the embedder training
 
-        val (bool): if true splits the dataset also into a validation set, and saves it
-        source_encoded_path (str): the path of the csv dataset folder, the csv must have a 'line' and a 'character' column
-        n_shuffles (int): multiplication factor for the output dataset dimensionality, if n_shuffles > 1, the output dataset will be n_shuffles times larger, default is 2
-        merge_sentences (bool): if True each sample of the returned dataset will have one character and more than one related sentences, default is True
-        n_sentences (int): size of the sentence set for each sample in the dataset, default is 3
-        save_dataset (bool): save the dataset built from the csv, default is True
-        verbose (bool): set to False to avoid printings, default is False
+        * `val` (bool): if true splits the dataset also into a validation set, and saves it
+        * `source_encoded_path` (str): the path of the csv dataset folder, the csv must have a 'line' and a 'character' column
+        * `n_shuffles` (int): multiplication factor for the output dataset dimensionality, if `n_shuffles` > 1, the output dataset will be n_shuffles times larger, default is 2
+        * `merge_sentences` (bool): if True each sample of the returned dataset will have one character and more than one related sentences, default is True
+        * `n_sentences` (int): size of the sentence set for each sample in the dataset, default is 3
+        * `save_dataset` (bool): save the dataset built from the csv, default is True
+        * `verbose` (bool): set to False to avoid printings, default is False
 
         returns a list of training dataframes, a list of validation dataframes and a list of test dataframes
         we have a list since we need a dataframe for each character
@@ -263,12 +264,12 @@ class DistilBertClassifier:
         get the dataset  for the embedding training
         if asked ('override'=True) or needed, a new dataset is built starting from the csv at 'source_path'
 
-        source_path (str): the path of the dataset folder
-        val (bool): if true splits the dataset also into a validation set, and saves it
-        override (bool): force building the dataset from the csv, if any dataset was already saved, it will be overwritten
-        merge_sentences (bool): if True each sample of the returned dataset will have one character and more than one related sentences, default is True
-        n_sentences (int): size of the sentence set for each sample in the dataset, default is 3
-        verbose (bool): set to False to avoid printings, default is False
+        * `source_path` (str): the path of the dataset folder
+        * `val` (bool): if true splits the dataset also into a validation set, and saves it
+        * `override` (bool): force building the dataset from the csv, if any dataset was already saved, it will be overwritten
+        * `merge_sentences` (bool): if True each sample of the returned dataset will have one character and more than one related sentences, default is True
+        * `n_sentences` (int): size of the sentence set for each sample in the dataset, default is 3
+        * `verbose` (bool): set to False to avoid printings, default is False
 
         returns the saved X_train, y_train, X_val, y_val, X_test, y_test
         """
@@ -328,13 +329,12 @@ class DistilBertClassifier:
         the triplet is composed by an 'anchor', a 'positive' sample where the input sentences have the same character label as the 'anchor'
         and a 'negative' sample where the input sentences have a different character label from the 'anchor'
 
-        X (List[str]): list of sentences given as input to the embedder
-        y (List[int]): list of character labels (expressed as integers)
-        verbose (bool): set to False to avoid printings, default is False
+        * `X` (List[str]): list of sentences given as input to the embedder
+        * `y` (List[int]): list of character labels (expressed as integers)
+        * `verbose` (bool): set to False to avoid printings, default is False
 
         returns the dataset ready to be passed to the embedder
         """
-
 
         assert len(X) == len(y)
 
@@ -389,12 +389,12 @@ class DistilBertClassifier:
         """
         train only the embedder with the triplet loss
 
-        patience (int): patience parameter for early stopping
-        train_examples (List[InputExamples]): train dataset
-        val_examples (List[InputExamples]): validation dataset
-        save_path (str): path where to save the trained embedder
-        verbose (bool): verbose parameter, default is False
-        statistics_path (str): path where to save accuracy history and other training statistics, default is None
+        * `patience` (int): patience parameter for early stopping
+        * `train_examples` (List[InputExamples]): train dataset
+        * `val_examples` (List[InputExamples]): validation dataset
+        * `save_path` (str): path where to save the trained embedder
+        * `verbose` (bool): verbose parameter, default is False
+        * `statistics_path` (str): path where to save accuracy history and other training statistics, default is None
 
         returns the train history and the validation history of the embedder training
         """
@@ -418,9 +418,9 @@ class DistilBertClassifier:
         train only the classifier (default classifier is knn)
         first the sentences are passed to the embedder and the output vectors build the actual dataset (together with y_train) for the classifier
 
-        X_train (List[str]): list of sentences given as input to the embedder
-        y_train (List[str]): list of character labels
-        verbose (bool): verbose parameter, default is False
+        * `X_train` (List[str]): list of sentences given as input to the embedder
+        * `y_train` (List[str]): list of character labels
+        * `verbose` (bool): verbose parameter, default is False
         """
 
         if verbose:
@@ -450,26 +450,25 @@ class DistilBertClassifier:
 
         """
         train both the embedder and the classifier
-        and also test it if asked ('test'=True)
+        and also test it if asked (`test`=True)
 
-        characters_path (str): the path of the dataset folder
-        model_path (str): the path of the pre-trained model
-        train_embedder (bool): if True also the embedder is trained (takes a lot of time), default is False
-        override_data (bool): force building the dataset from the csv, if any dataset was already saved, it will be overwritten
-        merge_sentences (bool): if True each sample of the returned dataset will have one character and more than one related sentences, default is True
-        n_sentences (int): size of the sentence set for each sample in the dataset, default is 3
-        verbose (bool): verbose parameter, default is False
-        test (bool): if True also test is done, default is False
-        patience (int): patience parameter for early stopping
-        statistics_path (str): path where to save accuracy history and other training statistics, default is None
+        * `characters_path` (str): the path of the dataset folder
+        * `model_path` (str): the path of the pre-trained model
+        * `train_embedder` (bool): if True also the embedder is trained (takes a lot of time), default is False
+        * `override_data` (bool): force building the dataset from the csv, if any dataset was already saved, it will be overwritten
+        * `merge_sentences` (bool): if True each sample of the returned dataset will have one character and more than one related sentences, default is True
+        * `n_sentences` (int): size of the sentence set for each sample in the dataset, default is 3
+        * `verbose` (bool): verbose parameter, default is False
+        * `test` (bool): if True also test is done, default is False
+        * `patience` (int): patience parameter for early stopping
+        * `statistics_path` (str): path where to save accuracy history and other training statistics, default is None
         """
 
         ### if patience>0, create also validation set
         val = isinstance(patience, int) and patience >= 0
 
         ### if save statistics, define statistics folder
-        statistics_path = join(model_path,
-                               'statistics') if save_statistics else None
+        statistics_path = join(model_path, 'statistics') if save_statistics else None
 
         ### get/create dataset
         X_train, y_train, X_val, y_val, X_test, y_test = self.get_data(
@@ -480,7 +479,6 @@ class DistilBertClassifier:
             verbose=verbose,
             val=val,
         )
-
         if train_embedder:
             ### create triplet for triplet loss
             train_examples = self.get_triplet_dataset(X_train,
@@ -489,7 +487,6 @@ class DistilBertClassifier:
             ### create triplet for validation loss
             val_examples = self.get_triplet_dataset(
                 X_val, y_val, verbose=verbose) if val else None
-
             ### train embedder
             self.train_embedder(patience=patience,
                                 train_examples=train_examples,
@@ -497,7 +494,6 @@ class DistilBertClassifier:
                                 save_path=model_path,
                                 verbose=verbose,
                                 statistics_path=statistics_path)
-
         ### train classifier
         self.train_classifier(X_train=X_train,
                               y_train=y_train,
@@ -525,9 +521,9 @@ class DistilBertClassifier:
         """
         testing the model: sentences are passed to the embedder and then classified (default by knn)
         
-        X_test (List[str]): test input sentences
-        y_test (List[int]): test character labels
-        statistics_path (str): path where to save accuracy history and other training statistics, default is None
+        * `X_test` (List[str]): test input sentences
+        * `y_test` (List[int]): test character labels
+        * `statistics_path` (str): path where to save accuracy history and other training statistics, default is None
         """
 
         if verbose:
@@ -570,9 +566,9 @@ class DistilBertClassifier:
         """
         predict the character from a set of sentences
 
-        sentences (List[str]): set os sentences to predict the character from
-        verbose (bool), verbose parameter, default is False
-        count_neighbors (bool): if knn is used not only the final prediction of knn is used for statistics, but all the nighbors also
+        * `sentences` (List[str]): set os sentences to predict the character from
+        * `verbose` (bool), verbose parameter, default is False
+        * `count_neighbors` (bool): if knn is used not only the final prediction of knn is used for statistics, but all the nighbors also
 
         returns the normalized distribution (among the characters) of predictions
         """

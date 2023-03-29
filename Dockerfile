@@ -7,7 +7,7 @@ FROM python:3.8
 RUN apt-get update -y && apt-get install -y zip
 
 # Install additional Python packages
-RUN pip install jupyter
+RUN pip install jupyter 
 # Install numerical Python packages
 RUN pip install numpy pandas scikit-learn 
 # Install NLP Python packages

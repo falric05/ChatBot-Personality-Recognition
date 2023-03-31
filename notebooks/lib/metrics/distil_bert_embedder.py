@@ -50,7 +50,7 @@ class BarneyEmbedder:
 
         ### set some training params
 #         self.batch_size: int = 64
-        self.batch_size: int = 8
+        self.batch_size: int = 128
         self.lr: float = 1e-3
         self.epochs: int = 5
 #         self.training_steps: int = 50
@@ -86,8 +86,8 @@ class BarneyEmbedder:
             ### build embedder from "scratch" 
             # old model distilbert-base-nli-mean-tokens
             # new model MiniLM-L6-H384-uncased
-            model = SentenceTransformer('distilbert-base-nli-mean-tokens')
-            # model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+            # model = SentenceTransformer('distilbert-base-nli-mean-tokens')
+            model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
             model.train()
             dense = models.Dense(
                 in_features=model.get_sentence_embedding_dimension(),

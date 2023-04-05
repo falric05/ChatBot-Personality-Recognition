@@ -62,12 +62,12 @@ class BERTopic_classifier():
                                         verbose=True)
             self.is_trained = False
         else:
-            # self.topic_model = BERTopic(umap_model=empty_dimensionality_model,
-            #                             hdbscan_model=clf,
-            #                             ctfidf_model=ctfidf_model,
-            #                             vectorizer_model=vectorizer_model, 
-            #                             verbose=True)
-            self.topic_model = load(path, map_location=device('cpu'))
+            self.topic_model = BERTopic(umap_model=empty_dimensionality_model,
+                                        hdbscan_model=clf,
+                                        ctfidf_model=ctfidf_model,
+                                        vectorizer_model=vectorizer_model, 
+                                        verbose=True)
+            self.topic_model.load(path)
             self.is_trained = True
         
     #

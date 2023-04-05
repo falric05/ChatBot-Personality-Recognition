@@ -1,9 +1,10 @@
 import os
 import random
 import json
+from pandas import DataFrame
 from os.path import join
 from typing import List, Tuple, Dict
-from pandas import DataFrame, read_csv
+from pandas import DataFrame, read_csv, concat
 from bertopic import BERTopic
 from bertopic.vectorizers import ClassTfidfTransformer
 from bertopic.dimensionality import BaseDimensionalityReduction
@@ -12,7 +13,8 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from sklearn.feature_extraction.text import CountVectorizer
 from tqdm import tqdm
 from torch import load, device
-import matplotlib.pyplot as plt
+from transformers import AutoTokenizer
+from copy import deepcopy
 
 from lib.BBData import character_dict, random_state, model_name
 from lib.BBDataLoad import load_char_df, get_chatbot_predictions
@@ -77,6 +79,50 @@ class BERTopic_classifier():
         setting the list of characters to consider during training and/or testing
         """
         self.characters = characters
+
+    #
+
+    @staticmethod
+    def get_character_df(series_df: DataFrame, n_shuffles: int,
+                         n_sentences: int,
+                         is_character_id=1) -> DataFrame:
+
+        """
+        returns the dataframe of character / lines used for training and testing, shiffled
+        the column 'character' indicates the character name,
+        the column 'line' indicates a sentence uttered by the character in the dataset scripts
+        for each character collects randomly a number of 'n_sentences' sentences from `series_df`
+        this will be the set of sentences used as input for the embedder
+
+        ## Params
+        * `series_df` (pandas.DataFrame): the reference dataframe, must have a 'character' and a 'line' column
+        * `n_shuffles` (int): multiplication factor for the output dataset dimensionality, if n_shuffles > 1, the output dataset will be n_shuffles times larger 
+        * `n_sentences` (int): cardinality of the set of sentences that will be used as input for the embedder
+        """
+        n_sentences = n_sentences // 2
+        series_df1 = series_df.copy()
+        # Separate lines by character from all the others
+        series_df_char = series_df1[series_df1['character'] == is_character_id].copy()
+        # Define triplet dataset as having a character label and the line, already encoded
+        df_rows = {'character': [], 'line': []}
+        # Shuffle by a parametrized amount
+        for i in range(n_shuffles):
+            # Shuffle the dataset and balance number of 0s (we suppose its cardinality is higher than that of 1s)
+            series_df_char = series_df_char.sample(frac=1,
+                                                   random_state=random_state +
+                                                   i).reset_index(drop=True)
+            # Iterate over lines
+            for i in range(n_sentences, len(series_df_char) - n_sentences + 1):
+                # Get 2*'n_sentences'+1 consecutive lines for the character, and concatenate them in one sample
+                lines = ' '.join(series_df_char['line'][i - n_sentences:i +
+                                                        n_sentences])
+                df_rows['character'].append(is_character_id)
+                df_rows['line'].append(lines)
+        # Create a new dataframe from the rows we have built
+        df = DataFrame(data=df_rows)
+        # Sample the dataset one last time to shuffle it
+        return df.sample(frac=1,
+                         random_state=random_state).reset_index(drop=True)
 
     #
 
@@ -292,6 +338,54 @@ class BERTopic_classifier():
     
     #
 
+    def get_chatbot_data(self, 
+                         n_sentences=3, 
+                         merge_sentences=False,
+                         n_shuffles=2):
+        base_folder = os.getcwd()
+        # remove default
+        characters_noDefault = list(character_dict.keys())
+        characters_noDefault.remove('Default')
+
+        # Load tokenizer, and set its padding token to the symbol #, which is removed in preprocessing from all datasets
+        tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=os.path.join(base_folder, "cache"))
+        tokenizer.pad_token = '#'
+
+        # prepare the dataset of all documents
+        chatbot_docs = dict()
+        # foreach character in ours dataset
+        for character in characters_noDefault:
+            file_name = character.lower() + '_prediction_sampling.json'
+            # read other dataset 
+            chatbot_predictions = get_chatbot_predictions(None, None, file_name, None, character, tokenizer, base_folder)
+            # attach the list to the dictionary of documents of character
+            chatbot_docs[character] = [tokenizer.decode(s, skip_special_tokens=True) for s in chatbot_predictions]
+
+        # preprocess datasets
+        chatbot_docs_prepr = deepcopy(chatbot_docs)
+        for character in characters_noDefault:
+            for i in tqdm(range(len(chatbot_docs[character]))):
+                sentence, relevant = sentence_preprocess(chatbot_docs[character][i])
+                if relevant:
+                    chatbot_docs_prepr[character][i] = sentence
+
+        # aggregate new test set
+        X_chatbot_test = [s for c in characters_noDefault for s in chatbot_docs_prepr[c]]
+        y_chatbot_test = [characters_noDefault.index(c) for c in characters_noDefault for s in chatbot_docs_prepr[c]]
+
+        series_df_test = DataFrame([[x, y] for x, y in zip(X_chatbot_test, y_chatbot_test)],
+                                   columns=['line', 'character'])
+        
+        series_df_test = concat([self.get_character_df(series_df_test,
+                                                       n_shuffles=n_shuffles,
+                                                       n_sentences=n_sentences,
+                                                       is_character_id=c) \
+                                for c in range(len(characters_noDefault))])
+        
+        return series_df_test['line'].tolist(), series_df_test['character'].tolist()
+
+    #
+
     def get_mapping(self) -> Tuple[Dict, Dict]:
         """
         BERTopic is a topic modelling model, thus predictions of BERTopic are topics, which could not mathc directly
@@ -333,7 +427,6 @@ class BERTopic_classifier():
         disp = ConfusionMatrixDisplay(confusion_matrix=cm,
                                       display_labels=self.characters)
         disp.plot(xticks_rotation='vertical')
-
 
     # 
 

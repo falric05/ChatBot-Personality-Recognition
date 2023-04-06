@@ -57,14 +57,16 @@ class BERTopic_classifier():
         #     load(map_location=device('cpu'))
 
         if not from_pretrained:
-            self.topic_model = BERTopic(umap_model=empty_dimensionality_model,
+            self.topic_model = BERTopic(embedding_model="paraphrase-MiniLM-L6-v2",
+                                        umap_model=empty_dimensionality_model,
                                         hdbscan_model=clf,
                                         ctfidf_model=ctfidf_model,
                                         vectorizer_model=vectorizer_model, 
                                         verbose=True)
             self.is_trained = False
         else:
-            self.topic_model = BERTopic(umap_model=empty_dimensionality_model,
+            self.topic_model = BERTopic(embedding_model="paraphrase-MiniLM-L6-v2",
+                                        umap_model=empty_dimensionality_model,
                                         hdbscan_model=clf,
                                         ctfidf_model=ctfidf_model,
                                         vectorizer_model=vectorizer_model, 
@@ -288,7 +290,7 @@ class BERTopic_classifier():
         * `verbose` (bool): set to False to avoid printings, default is False
 
         ## Returns 
-        the saved `X_train`, `y_train`, `X_val`, `y_val`, `X_test`, `y_test`
+        the saved `self.X_train`, `self.y_train`, `X_val`, `y_val`, `X_test`, `y_test`
         """
 
         ### create dataset if needed
@@ -325,8 +327,8 @@ class BERTopic_classifier():
             df_list_test = [DataFrame.from_dict(d) for d in df_list_test]
 
         ### separate dataset into inputs and labels for train, validation and test
-        X_train = sum([df['line'].tolist() for df in df_list_train], [])
-        y_train = sum([df['character'].tolist() for df in df_list_train], [])
+        self.X_train = sum([df['line'].tolist() for df in df_list_train], [])
+        self.y_train = sum([df['character'].tolist() for df in df_list_train], [])
         X_val = sum([df['line'].tolist()
                      for df in df_list_val], []) if val else None
         y_val = sum([df['character'].tolist()
@@ -334,7 +336,7 @@ class BERTopic_classifier():
         X_test = sum([df['line'].tolist() for df in df_list_test], [])
         y_test = sum([df['character'].tolist() for df in df_list_test], [])
 
-        return X_train, y_train, X_val, y_val, X_test, y_test
+        return self.X_train, self.y_train, X_val, y_val, X_test, y_test
     
     #
 
@@ -410,17 +412,21 @@ class BERTopic_classifier():
         ### Params
         * `train_data`: couple of list of documents and labels
         """
-        X_train, y_train = train_data
+        self.X_train, self.y_train = train_data
         # fit the model
-        y_train_pred, _ = self.topic_model.fit_transform(X_train, y=y_train)
+        y_train_pred, _ = self.topic_model.fit_transform(self.X_train, y=self.y_train)
         self.topic_model.save(self.path)
         self.is_trained = True
         # The resulting topics may be a different mapping from the y labels. 
         # To map y to topics, we can run the following:
-        _, inv_mapping = self.get_mapping()
+        mapping, inv_mapping = self.get_mapping()
+        # set new topics labels (i.e. characters' names)
+        topic_labels = [self.characters[inv_mapping[t]] for t in range(len(self.characters))]
+        self.topic_model.set_topic_labels(topic_labels)
+
         y_pred_mapped = [inv_mapping[val] for val in y_train_pred]
         # plot confusion matrix
-        cm = confusion_matrix(y_true=y_train,
+        cm = confusion_matrix(y_true=self.y_train,
                               y_pred=y_pred_mapped,
                               labels=list(range(len(self.characters))),
                               normalize='pred')
@@ -458,5 +464,24 @@ class BERTopic_classifier():
     
     #
 
-    def plot_documents(self, x: List[str]):
-        return self.topic_model.visualize_documents(x, title='Characters lines and Topics')
+    def plot_documents(self):
+        return self.topic_model.visualize_documents(self.X_train, title='<b>Characters lines and Topics</b>')
+    
+    #
+
+    def plot_barchart(self, top_n_topics=12, n_words=7):
+        """
+        Visualize top topic keywords
+        """
+        return self.topic_model.visualize_barchart(top_n_topics=top_n_topics, 
+                                                   n_words=n_words,
+                                                   custom_labels=True,
+                                                   title='<b>Characters word scores</b>')
+        
+    # 
+
+    def plot_similmatrix(self):
+        """
+        Visualize similarity using heatmap
+        """
+        return self.topic_model.visualize_heatmap(custom_labels=True)

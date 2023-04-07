@@ -51,7 +51,7 @@ class BERTopic_classifier():
         ### initialize the BERTopic model
         empty_dimensionality_model = BaseDimensionalityReduction()
         clf = MLPClassifier(learning_rate='adaptive')
-        ctfidf_model = ClassTfidfTransformer(reduce_frequent_words=True)
+        # ctfidf_model = ClassTfidfTransformer(reduce_frequent_words=True)
         vectorizer_model = CountVectorizer(stop_words="english")
 
         # if not use_cuda:
@@ -61,7 +61,7 @@ class BERTopic_classifier():
             self.topic_model = BERTopic(embedding_model="paraphrase-MiniLM-L6-v2",
                                         umap_model=empty_dimensionality_model,
                                         hdbscan_model=clf,
-                                        ctfidf_model=ctfidf_model,
+                                        # ctfidf_model=ctfidf_model,
                                         vectorizer_model=vectorizer_model, 
                                         verbose=True)
             self.is_trained = False
@@ -69,7 +69,7 @@ class BERTopic_classifier():
             self.topic_model = BERTopic(embedding_model="paraphrase-MiniLM-L6-v2",
                                         umap_model=empty_dimensionality_model,
                                         hdbscan_model=clf,
-                                        ctfidf_model=ctfidf_model,
+                                        # ctfidf_model=ctfidf_model,
                                         vectorizer_model=vectorizer_model, 
                                         verbose=True)
             self.topic_model.load(path)
@@ -422,7 +422,7 @@ class BERTopic_classifier():
         self.is_trained = True
         # The resulting topics may be a different mapping from the y labels. 
         # To map y to topics, we can run the following:
-        mapping, inv_mapping = self.get_mapping()
+        _, inv_mapping = self.get_mapping()
         # set new topics labels (i.e. characters' names)
         topic_labels = [self.characters[inv_mapping[t]] for t in range(len(self.characters))]
         self.topic_model.set_topic_labels(topic_labels)
@@ -436,6 +436,7 @@ class BERTopic_classifier():
         disp = ConfusionMatrixDisplay(confusion_matrix=cm,
                                       display_labels=self.characters)
         _, ax = plt.subplots(figsize=figsize)
+        ax.set_title('Train confusion matrix', fontweight='bold')
         disp.plot(ax=ax)
 
     # 
@@ -464,6 +465,7 @@ class BERTopic_classifier():
         disp = ConfusionMatrixDisplay(confusion_matrix=cm,
                                       display_labels=self.characters)
         _, ax = plt.subplots(figsize=figsize)
+        ax.set_title('Test confusion matrix', fontweight='bold')
         disp.plot(ax=ax)
 
         return y_pred_mapped
@@ -471,16 +473,22 @@ class BERTopic_classifier():
     #
 
     def plot_documents(self):
+        assert self.is_trained, 'The model must be trained before to make prediction. Please call method `train`!'
+
         return self.topic_model.visualize_documents(self.X_train, 
                                                     custom_labels=True,
                                                     title='<b>Characters lines and Topics</b>')
     
     #
 
-    def plot_barchart(self, top_n_topics=12, n_words=7):
+    def plot_barchart(self, top_n_topics=None, n_words=7):
         """
         Visualize top topic keywords
         """
+        assert self.is_trained, 'The model must be trained before to make prediction. Please call method `train`!'
+
+        if top_n_topics is None:
+            top_n_topics = len(self.characters)
         return self.topic_model.visualize_barchart(top_n_topics=top_n_topics, 
                                                    n_words=n_words,
                                                    custom_labels=True,
@@ -492,4 +500,6 @@ class BERTopic_classifier():
         """
         Visualize similarity using heatmap
         """
+        assert self.is_trained, 'The model must be trained before to make prediction. Please call method `train`!'
+        
         return self.topic_model.visualize_heatmap(custom_labels=True)

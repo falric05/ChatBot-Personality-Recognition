@@ -12,9 +12,10 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from sklearn.feature_extraction.text import CountVectorizer
 from tqdm import tqdm
-from torch import load, device
+# from torch import load, device
 from transformers import AutoTokenizer
 from copy import deepcopy
+from matplotlib import pyplot as plt
 
 from lib.BBData import character_dict, random_state, model_name
 from lib.BBDataLoad import load_char_df, get_chatbot_predictions
@@ -405,7 +406,9 @@ class BERTopic_classifier():
    
     #
     
-    def train(self, train_data: Tuple[List[str], List[int]]) -> None:
+    def train(self, 
+              train_data: Tuple[List[str], List[int]],
+              figsize=(10,8)) -> None:
         """
         Train BERTopic model
 
@@ -432,11 +435,14 @@ class BERTopic_classifier():
                               normalize='pred')
         disp = ConfusionMatrixDisplay(confusion_matrix=cm,
                                       display_labels=self.characters)
-        disp.plot(xticks_rotation='vertical')
+        _, ax = plt.subplots(figsize=figsize)
+        disp.plot(ax=ax)
 
     # 
 
-    def predict(self, test_data: Tuple[List[str], List[int]]) -> List[int]:
+    def predict(self, 
+                test_data: Tuple[List[str], List[int]],
+                figsize=(8,8)) -> List[int]:
         """
         Test BERTopic model
         
@@ -457,15 +463,17 @@ class BERTopic_classifier():
                               normalize='pred')
         disp = ConfusionMatrixDisplay(confusion_matrix=cm,
                                       display_labels=self.characters)
-        disp.plot(xticks_rotation='vertical')
-
+        _, ax = plt.subplots(figsize=figsize)
+        disp.plot(ax=ax)
 
         return y_pred_mapped
     
     #
 
     def plot_documents(self):
-        return self.topic_model.visualize_documents(self.X_train, title='<b>Characters lines and Topics</b>')
+        return self.topic_model.visualize_documents(self.X_train, 
+                                                    custom_labels=True,
+                                                    title='<b>Characters lines and Topics</b>')
     
     #
 

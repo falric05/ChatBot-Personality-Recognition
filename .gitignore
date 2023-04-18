@@ -13,3 +13,6 @@ Data/
 models/
 # /papers/notes.md
 images/ntrp1_batchsize8.png
+
+#venv
+venv/

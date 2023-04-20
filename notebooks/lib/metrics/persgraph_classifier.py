@@ -7,7 +7,7 @@ import string
 import json
 from tqdm import tqdm
 import numpy as np 
-from typing import List, Callable
+from typing import List, Dict, Callable
 from matplotlib import pyplot as plt
 #
 from sklearn.metrics import f1_score, confusion_matrix, ConfusionMatrixDisplay
@@ -19,6 +19,7 @@ from torch import nn
 from sentence_transformers import SentenceTransformer
 from torch import Tensor
 from torch.nn import Linear, Dropout, ReLU, Softmax, LogSoftmax, CrossEntropyLoss
+from torch.nn.functional import relu
 from torch.optim import Optimizer, Adam, AdamW
 # from torch.nn import functional as pt_f
 from torchmetrics import F1Score
@@ -185,14 +186,15 @@ class PersGRAPH_classifier():
 
         ### `characters`: list of characters
         """
+        ### set new characters list
         self.characters = characters
+        ### re-fit the onehot encoder
         self.onehotenc = OneHotEncoder(handle_unknown='ignore')
         self.onehotenc.fit(np.arange(len(self.characters)).reshape((-1,1)))
 
     #
 
-    def __graph_preprocess(self, sns_list: List[str],
-                           min_chat_len: int = 3, max_chat_len: int = 7, verbose: bool = False):
+    def __graph_preprocess(self, sns_list: List[str], min_chat_len: int = 3, max_chat_len: int = 7, verbose: bool = False) -> List[Dict]:
         """
         Preprocess a list of a character lines to create a chat graph
         
@@ -201,6 +203,9 @@ class PersGRAPH_classifier():
         * `min_chat_len`: minimum number of sentence to aggregate in a single graph
         * `max_chat_len`: maximum number of sentence to aggregate in a single graph
         * `verbose`: process verbosity
+
+        ### Return
+        The a list containing graphs
         """
         ### set random seed
         np.random.seed(random_state)
@@ -224,8 +229,7 @@ class PersGRAPH_classifier():
 
     #
 
-    def __graph_to_pygObject(self, path_graphs, path_pt_graphs, 
-                             verbose=False):
+    def __graph_to_pygObject(self, path_graphs, path_pt_graphs, verbose=False) -> None:
         """
         Transform and store json graph to pt object
 
@@ -254,10 +258,7 @@ class PersGRAPH_classifier():
 
     #
 
-    def create_data(self, data_folder: str, characters_folder: str, 
-                    n_sentences_range: int = (3, 7), override_graphs: bool = False,
-                    verbose: bool = False) -> None:
-
+    def create_data(self, data_folder: str, characters_folder: str, n_sentences_range: int = (3, 7), override_graphs: bool = False, verbose: bool = False) -> None:
         """
         create and save dataset starting from the csv at `data_folder`
 
@@ -367,7 +368,18 @@ class PersGRAPH_classifier():
 
     #
 
-    def __validate(self, valid_loader: DataLoader, optimizer: Optimizer, loss: CrossEntropyLoss, idx_epoch: int):
+    def __validate(self, valid_loader: DataLoader, optimizer: Optimizer, loss: Callable[[torch.Tensor, torch.Tensor], float], idx_epoch: int) -> Tuple[float, float]:
+        """
+        Make a validation step of the model using the validation set
+
+        ### Params
+        * `valid_loader`: validation data loader
+        * `loss`: criterion for loss
+        * `idx_epoch`: index of epoch
+
+        ### Return
+        The validation loss and the validation f1score
+        """
         valid_loss    = 0.0
         valid_f1score = 0.0
         pbar = tqdm(valid_loader, desc="## Valid epoch = {}".format(idx_epoch), leave=True, 
@@ -384,12 +396,11 @@ class PersGRAPH_classifier():
             _ys_true = torch.argmax(_ys_true_onehot, dim=1)
             _ys_true.to(self.device)
             ### make predictions
-            optimizer.zero_grad()
+            # optimizer.zero_grad()
             ys_pred_onehot = self.model(_batch)
             ys_pred = torch.argmax(ys_pred_onehot, dim=1)
             ys_pred.to(self.device)
             ### compute loss
-            # batch_loss = loss(torch.max(ys_pred_onehot, dim=1), torch.max(_ys_true_onehot, dim=1))
             batch_loss = loss(ys_pred_onehot, _ys_true_onehot)
             valid_loss += float(batch_loss)
             ### move the tensors to cpu to compute scikit-learn f1score
@@ -406,9 +417,22 @@ class PersGRAPH_classifier():
 
     #
 
-    def __train_one_epoch(self, train_loader: DataLoader, valid_loader: DataLoader, 
-                          loss: Callable[[torch.Tensor, torch.Tensor], float], optimizer: Optimizer, 
-                          idx_epoch: int, patience: int) -> Tuple[float, float, float, float]:
+    def __train_one_epoch(self, train_loader: DataLoader, valid_loader: DataLoader, loss: Callable[[torch.Tensor, torch.Tensor], float], optimizer: Optimizer, idx_epoch: int, patience: int) -> Tuple[float, float, float, float]:
+        """
+        Make a single training step of the model using the training set and then call
+        the validation step
+
+        ### Params
+        * `train_loader`: training data loader
+        * `valid_loader`: validation data loader
+        * `loss`: criterion for loss
+        * `optimizer`: optimizer to use
+        * `idx_epoch`: index of epoch
+        * `patience`: patience step before early stopping
+
+        ### Return
+        A tuple containing (`train_loss`, `train_f1score`, `valid_loss`, `valid_f1score`)
+        """
         self.model.train()
         train_loss    = 0.0
         train_f1score = 0.0
@@ -452,9 +476,21 @@ class PersGRAPH_classifier():
     
     #
 
-    def train(self, X_train: DataLoader, X_valid: DataLoader,
-              optimizer: str = 'adam', epochs: int = 3, 
-              patience: int = 3, lr: int = 1e-3) -> Tuple[List[float], List[float], List[float], List[float]]:
+    def train(self, X_train: DataLoader, X_valid: DataLoader, optimizer: str = 'adam', epochs: int = 3, patience: int = 3, lr: int = 1e-3) -> Tuple[List[float], List[float], List[float], List[float]]:
+        """
+        Train the model
+
+        ### Params
+        * `X_loader`: training data loader
+        * `X_loader`: validation data loader
+        * `optimizer`: optimizer to use
+        * `lr`: learning rate for optimizer
+        * `epochs`: number of epochs
+        * `patience`: patience steps before early stopping
+
+        ### Return
+        A tuple containing (`train_loss`, `train_f1score`, `valid_loss`, `valid_f1score`)
+        """
         ### cross entropy loss
         loss = CrossEntropyLoss()
         ### optizer
@@ -487,7 +523,7 @@ class PersGRAPH_classifier():
                 break
         self.model.load_state_dict(torch.load(self.model_path, map_location=self.device))
         ### store training history
-        history_path = join(self.model_path, 'train_history.json')
+        history_path = join(self.model_path, '..','train_history.json')
         with open(history_path, 'w') as f:
             json.dump({'training_loss': train_loss_history, 
                        'training_f1score': train_f1score_history,
@@ -498,7 +534,17 @@ class PersGRAPH_classifier():
     
     #
 
-    def test(self, test_loader: DataLoader, print_scores: bool = True) -> Tuple[Tensor, Tensor]:
+    def test(self, test_loader: DataLoader, print_scores: bool = True, normalize_cm: bool = False) -> Tuple[Tensor, Tensor]:
+        """
+        Test the model
+
+        ### Params
+        * `test_loader`: test data loader
+        * `print_score`: if true will print the f1score and plot the confusion matrix
+
+        ### Return
+        A tuple containing (`_ys_true`, `ys_pred`)
+        """
         pbar = tqdm(test_loader, desc="## Test ")
         ys_pred = []
         _ys_true = []
@@ -524,7 +570,7 @@ class PersGRAPH_classifier():
             cm = confusion_matrix(y_true=_ys_true_array,
                                   y_pred=ys_pred_array,
                                   labels=list(range(len(self.characters))),
-                                  normalize='true')
+                                  normalize='true' if normalize_cm else None)
             disp = ConfusionMatrixDisplay(confusion_matrix=cm,
                                         display_labels=self.characters)
             _, ax = plt.subplots(figsize=(8,8))

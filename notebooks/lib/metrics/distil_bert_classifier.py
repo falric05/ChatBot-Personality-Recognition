@@ -547,8 +547,10 @@ class DistilBertClassifier:
         disp = ConfusionMatrixDisplay(confusion_matrix=cm,
                                       display_labels=self.characters)
 
+        _, ax = plt.subplots(figsize=(8,8))
+        ax.set_title('Test confusion matrix', fontweight='bold')
+        disp.plot(ax=ax)
         ### plot confusion metrics results
-        disp.plot()
         plt.show()
 
         ### save confusion metrics results into the statisctics path

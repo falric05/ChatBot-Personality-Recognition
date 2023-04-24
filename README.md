@@ -53,3 +53,5 @@ python -m venv ./venv
 ```
 pip install -r ./requirements.txt
 ```
+
+now you are ready to execute the code of the jupyter notebooks in the folder `notebooks`.

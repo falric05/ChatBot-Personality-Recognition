@@ -37,3 +37,19 @@ In this project two new approaches for personality recognition are explored:
 
 * a sentence graph based embedding approach (_PersGRAPH classifier_)
 * a supervised topic modeling classifier approach (BERTopic classifier_)
+
+## __Setup__
+
+1. Create a virtual environment running the following code:
+
+```
+python -m venv ./venv
+```
+
+2. Activate thevirtual environment by executing the script contained in the folder `venv`
+
+3. Run the installation of requirements
+
+```
+pip install -r ./requirements.txt
+```

@@ -13,6 +13,6 @@ Data/
 models/
 # /papers/notes.md
 images/ntrp1_batchsize8.png
-images/cm_distilbert_original
+images/cm_distilbert_original.png
 #venv
 venv/

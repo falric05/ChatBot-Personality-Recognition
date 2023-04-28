@@ -1,6 +1,6 @@
 # __ChatBot-Personality-Recognition__
 
-Inspiration from _“A neural chatbot with personality” by Nguyen et al_personality. Published at the Semantic Scholar (2017).
+Inspiration from _“A neural chatbot with personality” by Nguyen et al_ personality. Published at the Semantic Scholar (2017).
 
 <img src="images/Barney.png" alt="Barney" width=300 />
 
